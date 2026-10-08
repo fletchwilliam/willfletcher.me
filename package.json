@@ -7,9 +7,13 @@
   "scripts": {
     "build": "node build.mjs",
     "dev": "node build.mjs && npx --yes serve dist",
-    "deploy": "node build.mjs && npx --yes wrangler deploy"
+    "bundle": "node build.mjs && node scripts/bundle-worker.mjs && node scripts/deploy.mjs",
+    "deploy:wrangler": "node build.mjs && wrangler deploy"
   },
   "dependencies": {
     "marked": "^18.1.0"
+  },
+  "devDependencies": {
+    "wrangler": "^4.148.0"
   }
 }

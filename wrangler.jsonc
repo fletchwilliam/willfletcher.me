@@ -1,5 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
+  // Alternative deploy path (`npm run deploy:wrangler`). The usual path is the API-only
+  // bundle (`npm run bundle` + Cloudflare connector), see README.
   "name": "willfletcher-site",
   "main": "src/worker.js",
   "compatibility_date": "2026-10-01",
@@ -8,9 +10,13 @@
     "binding": "ASSETS",
     "html_handling": "auto-trailing-slash",
     "not_found_handling": "404-page",
-    // Run the Worker first only so www can redirect to the apex.
+    // Run the Worker first so www can redirect to the apex and /media/* can come from R2.
     "run_worker_first": true
   },
+  // Images and other media: media/<path> in the repo -> R2 object <path> -> /media/<path>.
+  "r2_buckets": [
+    { "binding": "MEDIA", "bucket_name": "willfletcher-site-media" }
+  ],
   "routes": [
     { "pattern": "willfletcher.me", "custom_domain": true },
     { "pattern": "www.willfletcher.me", "custom_domain": true }

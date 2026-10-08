@@ -32,7 +32,9 @@ function page({ title, body, description = "", nav = true }) {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(fullTitle)}</title>
-${description ? `<meta name="description" content="${esc(description)}">\n` : ""}<link rel="stylesheet" href="/style.css">
+${description ? `<meta name="description" content="${esc(description)}">\n` : ""}<link rel="icon" type="image/png" href="/media/icon.png">
+<link rel="apple-touch-icon" href="/media/icon.png">
+<link rel="stylesheet" href="/style.css">
 ${hasPosts ? `<link rel="alternate" type="application/rss+xml" title="${esc(SITE.title)}" href="/feed.xml">\n` : ""}</head>
 <body>
 ${nav ? `<nav><a href="/">Home</a>${hasPosts ? `<a href="/blog/">Blog</a>` : ""}</nav>\n` : ""}<main>
@@ -63,7 +65,16 @@ rmSync(OUT, { recursive: true, force: true });
 mkdirSync(OUT, { recursive: true });
 cpSync("static", OUT, { recursive: true });
 
+// Every /media/... reference must exist in media/ (served from R2 at /media/<path>).
+const missingMedia = new Set();
+const checkMedia = (html) => {
+  for (const [, ref] of html.matchAll(/(?:src|href)="\/media\/([^"?#]+)/g)) {
+    let file = ref; try { file = decodeURIComponent(ref); } catch {}
+    if (!existsSync(join("media", file))) missingMedia.add(file);
+  }
+};
 const write = (path, html) => {
+  checkMedia(html);
   mkdirSync(join(OUT, path), { recursive: true });
   writeFileSync(join(OUT, path, "index.html"), html);
 };
@@ -95,4 +106,8 @@ if (hasPosts) {
 // 404 page
 writeFileSync(join(OUT, "404.html"), page({ title: "Not found", body: `<h1>Not found</h1>\n<p><a href="/">Go home</a></p>` }));
 
+if (missingMedia.size) {
+  console.error(`Missing media files (referenced as /media/... but not in media/):\n${[...missingMedia].map((f) => `  media/${f}`).join("\n")}`);
+  process.exit(1);
+}
 console.log(`Built ${posts.length} post(s) into ${OUT}/`);
