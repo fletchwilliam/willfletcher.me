@@ -11,7 +11,12 @@ const files = {};
   for (const f of readdirSync(dir)) {
     const p = join(dir, f);
     if (statSync(p).isDirectory()) walk(p);
-    else files["/" + relative("dist", p).split("\\").join("/")] = { t: TYPES[extname(p)] || "application/octet-stream", b: readFileSync(p).toString("base64") };
+    else {
+      const t = TYPES[extname(p)] || "application/octet-stream";
+      const buf = readFileSync(p);
+      // Text is embedded as-is (smaller); anything else as base64.
+      files["/" + relative("dist", p).split("\\").join("/")] = /^text\/|xml/.test(t) ? { t, s: buf.toString("utf8") } : { t, b: buf.toString("base64") };
+    }
   }
 })("dist");
 
@@ -34,12 +39,13 @@ export default {
     if (url.hostname === "www." + APEX) { url.hostname = APEX; return Response.redirect(url.toString(), 301); }
     if (req.method !== "GET" && req.method !== "HEAD") return new Response("Method not allowed", { status: 405, headers: { allow: "GET, HEAD" } });
     let path = url.pathname; try { path = decodeURIComponent(path); } catch {}
-    if (path.startsWith(MEDIA_PREFIX)) return serveMedia(req, env, path);
+    const media = mediaRoute(path);
+    if (media) return serveMedia(req, env, media);
     const r = resolve(path);
     if (r && r.redirect) { url.pathname = r.redirect; return Response.redirect(url.toString(), 301); }
     const f = r ? r.file : FILES["/404.html"];
     const isHtml = f.t.startsWith("text/html");
-    return new Response(req.method === "HEAD" ? null : dec(f.b), {
+    return new Response(req.method === "HEAD" ? null : f.s !== undefined ? f.s : dec(f.b), {
       status: r ? 200 : 404,
       headers: { "content-type": f.t, "cache-control": isHtml ? "public, max-age=0, must-revalidate" : "public, max-age=3600", "x-content-type-options": "nosniff" },
     });

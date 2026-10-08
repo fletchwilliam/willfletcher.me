@@ -34,6 +34,12 @@ const files = [];
   }
 })(MEDIA_DIR);
 
+// Root icon paths (/favicon.ico etc.) are served from R2; make sure their files exist.
+const rootSrc = readFileSync("src/media.js", "utf8").match(/ROOT_MEDIA = (\{[\s\S]*?\});/)[1];
+for (const key of new Set(Object.values(JSON.parse(rootSrc.replace(/,\s*\}/, "}"))))) {
+  if (!files.some((f) => f.key === key)) { console.error(`Missing ${MEDIA_DIR}/${key} (needed for a root icon path, see ROOT_MEDIA in src/media.js)`); process.exit(1); }
+}
+
 rmSync(OUT, { recursive: true, force: true });
 mkdirSync(join(OUT, "media"), { recursive: true });
 
@@ -62,6 +68,8 @@ for (const f of files) {
   writeFileSync(join(OUT, "media", snippetName(f.key)), `async () => {
   const b64 = "${f.buf.toString("base64")}";
   const body = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+  const sha = [...new Uint8Array(await crypto.subtle.digest("SHA-256", body))].map((x) => x.toString(16).padStart(2, "0")).join("");
+  if (sha !== "${createHash("sha256").update(f.buf).digest("hex")}") return { key: ${JSON.stringify(f.key)}, ok: false, error: "snippet does not match media file (sha256 " + sha + "); not uploaded" };
   const r = await cloudflare.request({ method: "PUT", path: \`/accounts/\${accountId}/r2/buckets/${BUCKET}/objects/${encKey}\`, body, contentType: ${JSON.stringify(f.type)}, rawBody: true });
   return { key: ${JSON.stringify(f.key)}, ok: r.success && r.result && r.result.etag === ${JSON.stringify(f.md5)}, status: r.status, etag: r.result && r.result.etag, errors: r.errors };
 }

@@ -11,10 +11,12 @@ Live: https://willfletcher.me
 index.md                  Homepage content (Markdown)
 posts/*.md                Blog posts, one file per post
 media/                    Images and other files (uploaded to R2, served at /media/...)
+media/site/               Site icons (favicon.ico, icon.svg, PNGs, apple-touch-icon), served at the root
 static/                   Small text assets copied into the site root (style.css)
 build.mjs                 The build: index.md + posts/ -> dist/
 scripts/bundle-worker.mjs Packs dist/ into one Worker script (dist-worker/worker.js)
 scripts/deploy.mjs        Writes the Cloudflare API snippets for a deploy (dist-worker/connector/)
+scripts/make-icons.py     Regenerates the icons in media/site/ (Pillow + fontTools)
 src/media.js              Serves /media/* from the R2 bucket (shared by both Worker variants)
 src/worker.js             Worker for the alternative `wrangler deploy` path
 wrangler.jsonc            Config for the alternative `wrangler deploy` path
@@ -26,6 +28,12 @@ wrangler.jsonc            Config for the alternative `wrangler deploy` path
 - **Media** (images, PDFs, etc.) live in the R2 bucket `willfletcher-site-media`.
   The same Worker serves them: `media/<path>` in this repo is R2 object `<path>`, served at
   `https://willfletcher.me/media/<path>`, with the right content type, an ETag and a 1-year cache.
+- **Icons** also live in R2 (`media/site/` → `site/...`) and are served at the root paths browsers
+  and Safari/iOS look for: `/favicon.ico` (16/32/48), `/icon.svg`, `/favicon-32x32.png`,
+  `/favicon-16x16.png`, `/apple-touch-icon.png` (180×180, also `/apple-touch-icon-precomposed.png`).
+  These are cached for a day (not a year), so a new icon shows up soon after a deploy.
+  To change the icon, replace the files in `media/site/` (keep the names) and deploy.
+  The mapping is `ROOT_MEDIA` in `src/media.js`.
 - Custom domains: `willfletcher.me` and `www.willfletcher.me` (www redirects to the apex).
 
 ## Write a post
@@ -85,7 +93,8 @@ It deploys through the Cloudflare API connector, with no wrangler login or token
    - `check-media.js` lists which `media/` files are new or changed compared to the R2 bucket
      (compares MD5 with the R2 ETag)
    - `media/<file>.js`, one per media file, uploads that file to R2
-     (`PUT /accounts/{id}/r2/buckets/willfletcher-site-media/objects/<key>`)
+     (`PUT /accounts/{id}/r2/buckets/willfletcher-site-media/objects/<key>`). It checks a
+     SHA-256 of the embedded file first and refuses to upload if the snippet was altered.
    - `worker.js` uploads the Worker script with the R2 binding `MEDIA`
      (`PUT /accounts/{id}/workers/scripts/willfletcher-site`). It checks a SHA-256 of the
      script first and refuses to deploy if the snippet was altered.

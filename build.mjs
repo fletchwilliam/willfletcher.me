@@ -32,8 +32,11 @@ function page({ title, body, description = "", nav = true }) {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(fullTitle)}</title>
-${description ? `<meta name="description" content="${esc(description)}">\n` : ""}<link rel="icon" type="image/png" href="/media/icon.png">
-<link rel="apple-touch-icon" href="/media/icon.png">
+${description ? `<meta name="description" content="${esc(description)}">\n` : ""}<link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon-32x32.png" type="image/png" sizes="32x32">
+<link rel="icon" href="/favicon-16x16.png" type="image/png" sizes="16x16">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180">
 <link rel="stylesheet" href="/style.css">
 ${hasPosts ? `<link rel="alternate" type="application/rss+xml" title="${esc(SITE.title)}" href="/feed.xml">\n` : ""}</head>
 <body>
